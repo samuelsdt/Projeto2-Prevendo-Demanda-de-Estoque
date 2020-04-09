@@ -2,7 +2,7 @@
 
 Este projeto tem como objetivo apresentar uma solução para a competição da Kaggle: Grupo Bimbo Inventory Demand, disponível em https://www.kaggle.com/c/grupo-bimbo-inventory-demand.
 
-Nessa solução será utilizada linguagem R, os scripts são os seguintes:
+Solução em linguagem R, os scripts são os seguintes:
 
 01-conhecendo_os_dados: script que  busca conhecer como os dados estão dipostos ns bases de treino e teste.
 
