@@ -2,7 +2,7 @@
 
 Este projeto tem como objetivo apresentar uma solução para a competição da Kaggle: Grupo Bimbo Inventory Demand, disponível em https://www.kaggle.com/c/grupo-bimbo-inventory-demand.
 
-Solução em linguagem R, os scripts são os seguintes:
+Solução em linguagem R, os datasets estão disponíveis em https://www.kaggle.com/c/grupo-bimbo-inventory-demand/data, os scripts são os seguintes:
 
 01-conhecendo_os_dados: script que  busca conhecer como os dados estão dipostos ns bases de treino e teste.
 
@@ -12,4 +12,4 @@ Solução em linguagem R, os scripts são os seguintes:
 
 04-aplicar_ml_base_testes: aplicação do modelo preditivo de melhor acurácia na base de testes, geração do arquivo de submissão ao Kaggle.
 
-analises: Processo de análise dos dados disponíveis, buscando explorar o comportamento do mercado no qual os dados se referem, também disponível em página web para visualização.
+analises: Processo de análise dos dados disponíveis, buscando explorar o comportamento do mercado no qual os dados se referem, disponível em página web para visualização.
