@@ -1,0 +1,214 @@
+---
+title: "analises"
+author: "Samuel Schmidt"
+output: html_document
+---
+
+```{r pacotes, include=FALSE}
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(ggplot2)
+library(geojsonio)
+library(sp)
+options(warn=-1)
+```
+
+## Análise de dados
+
+Esse relatório tem como objetivo analisar dados da competição do Kaggle, buscando conhecer o comportamento do mercado.
+
+### Devolução de produtos
+
+Conforme o dicionário de dados da competição, dentro da base estão disponíveis as informações sobre a devolução de produtos (quantidade e valor de devolução). Sabe-se muito bem que a devolução acaba gerando custos desnecessários, pois muitas vezes dependendo da perecibilidade do produto, estes não podem ser reaproveitados, além também dos custos de logística. 
+
+Nos próximos gráficos serão analisados quantidade de devolução por semana, valor de devolução por semana, produtos mais devolvidos. 
+
+#### Quantidade Devolução por semana
+
+```{r plots1, echo=FALSE}
+df  <- fread("train.csv", header = T)
+df %>%
+    select(Semana, Venta_uni_hoy, Dev_uni_proxima) %>%
+    group_by(Semana) %>%
+    summarise(devolucao = sum(Dev_uni_proxima), venda = sum(Venta_uni_hoy), perc_dev = percent(accuracy=0.01, devolucao/venda) ) %>%
+  gather("fato" , "valor", devolucao, venda) %>%
+  mutate(perc_dev = ifelse(fato=="devolucao",perc_dev,"")) %>%
+    ggplot(aes(x=Semana,y=valor, fill=fato)) + geom_bar(stat="identity", position = "dodge") + coord_flip() + geom_text(aes(label=perc_dev), position = position_dodge(width = 1), hjust = -0.1, size=3)  + scale_y_continuous(labels = comma) + scale_x_continuous(breaks=seq(3,9)) + ylab("Quantidade") + theme(panel.background = element_rect(fill = "#FFFFFF", colour = "#6D9EC1"), panel.grid = element_line(size = 0.5, linetype = 'solid',colour = "#E0E0E0"), legend.title = element_blank())
+```
+
+Conforme observado no gráfico acima, as devoluções tem representado entre 1,6% e 2.2% da quantidade dos itens vendidos.
+
+#### Valor Devolução por semana
+
+```{r plots2, echo=FALSE}
+df %>%
+    select(Semana, Venta_hoy, Dev_proxima) %>%
+    group_by(Semana) %>%
+    summarise(devolucao = sum(Dev_proxima), venda = sum(Venta_hoy), perc_dev = percent(accuracy=0.01, devolucao/venda) ) %>%
+  gather("fato" , "valor", devolucao, venda) %>%
+  mutate(perc_dev = ifelse(fato=="devolucao",perc_dev,"")) %>%
+    ggplot(aes(x=Semana,y=valor, fill=fato)) + geom_bar(stat="identity", position = "dodge") + coord_flip() + geom_text(aes(label=perc_dev), position = position_dodge(width = 1), hjust = -0.1, size=3)  + scale_y_continuous(labels = comma) + scale_x_continuous(breaks=seq(3,9)) + theme(panel.background = element_rect(fill = "#FFFFFF", colour = "#6D9EC1"), panel.grid = element_line(linetype = 'solid',colour = "#E0E0E0"), legend.title = element_blank()) 
+```
+
+Conforme o gráfico acima demonstra, a devolução em valores, tem um percentual próximo a quantidade, sendo que se tratando de valores o intervalo de diferença entre o máximo e o mínimo é menor (1.7% a 2%).
+
+#### Produtos mais devolvidos (quantidade abosoluta)
+
+```{r plots3, echo=FALSE}
+df %>%
+    select(Producto_ID, Venta_hoy, Dev_proxima) %>%
+    group_by(Producto_ID) %>%
+    summarise(devolucao = sum(Dev_proxima), venda = sum(Venta_hoy), perc_dev = percent(accuracy=0.01,devolucao/venda)) %>%
+    arrange(desc(devolucao)) %>%
+    mutate(rank = rank(desc(venda),ties.method ="min"), ord = seq(1:length(unique(Producto_ID)))) %>%
+    head(10) %>%
+    gather("fato" , "valor", devolucao, venda) %>%
+    mutate(perc_dev = ifelse(fato=="devolucao",paste0(perc_dev," - ", rank,"º produto mais vendido"),"")) %>%
+    arrange(desc(ord)) %>%
+    ggplot(aes(x=seq(1,20),y=valor, fill=fato)) + geom_bar(stat="identity", position = "dodge") + coord_flip() + geom_text(aes(label=perc_dev), position = position_dodge(width = 1), vjust=0.2, hjust = -0.05, size=3)  + scale_y_continuous(labels = comma) + ylab("Quantidade") + theme(panel.background = element_rect(fill = "#FFFFFF", colour = "#6D9EC1"), panel.grid = element_line(size = 0.5, linetype = 'solid',colour = "#E0E0E0"), legend.title = element_blank(),axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank())
+```
+
+No gráfico pode-se observar que entre os 10 produtos que mais possuem unidades devolvidas, o produto mais vendido também está em primeiro lugar, porém esse produto possuí um percentual de devolução abaixo da grande maioria do produto nesse ranking, apenas o segundo produto mais vendido (7º mais devolvido) tem um percentual menor que o produto mais vendido.
+
+#### Produtos mais devolvidos (percentual)
+
+```{r plots4, echo=FALSE}
+df %>%
+    select(Producto_ID, Venta_hoy, Dev_proxima) %>%
+    filter(Venta_hoy>0) %>%
+    group_by(Producto_ID) %>%
+    summarise(devolucao = sum(Dev_proxima), venda = sum(Venta_hoy), perc_dev = percent(accuracy=0.01,devolucao/venda)) %>%
+    arrange(desc(perc_dev)) %>%
+    mutate(rank = rank(desc(venda),ties.method ="min"), ord = seq(1:length(unique(Producto_ID)))) %>%
+    head(10) %>%
+    gather("fato" , "valor", devolucao, venda) %>%
+    mutate(perc_dev = ifelse(fato=="devolucao",paste0(perc_dev," - ", rank,"º produto mais vendido"),"")) %>%
+    arrange(desc(ord)) %>%
+    ggplot(aes(x=seq(1,20),y=valor, fill=fato)) + geom_bar(stat="identity", position = "dodge") + coord_flip() + geom_text(aes(label=perc_dev), position = position_dodge(width = 1), vjust=0.2, hjust = -0.05, size=3)  + scale_y_continuous(labels = comma) + ylab("Quantidade") + theme(panel.background = element_rect(fill = "#FFFFFF", colour = "#6D9EC1"), panel.grid = element_line(size = 0.5, linetype = 'solid',colour = "#E0E0E0"), legend.title = element_blank(),axis.title.y=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank()) 
+```
+
+Com exceção dos produtos que ficaram nas duas primeiras posições, onde quase 100% do volume vendido foi devolvido, nos demais produtos o percentual de devolução ficou próximo a 10%, um índice bastante alto se comparado aos índices apresentados nos gráficos anteriores.
+
+### Evolução nas vendas
+
+Nos próximos gráficos serão explorados dados sumarizados sobre produtos que apresentaram evolução nas vendas semana após semana.
+
+#### Produtos com evolução nas vendas por semana
+
+```{r plots5, echo=FALSE}
+t <- df %>%
+         select(Semana,Producto_ID,Demanda_uni_equil)%>%
+         group_by(Semana,Producto_ID) %>%
+         summarise(total_prod = sum(Demanda_uni_equil))
+
+t <- t %>%
+       filter(Semana<9) %>%
+       ungroup(Semana) %>%
+       mutate(Semana=Semana+1) %>%
+       rename(Demana_sem_ant = total_prod) %>%
+       left_join(x=t,by=c("Semana", "Producto_ID"))
+t <- t[t$Semana>3,]
+t[is.na(t$Demana_sem_ant),"Demana_sem_ant"] = 0
+t$dif = t$total_prod - t$Demana_sem_ant
+tbl <- t[(t$Semana==4) & (t$dif>0),]
+for (i in c(5:9))
+{
+ tbl <-  bind_rows(tbl,t[(t$Semana==i) & (t$dif>0) & (t$Producto_ID %in% tbl[tbl$Semana==(i-1),]$Producto_ID),])
+}
+rm(i,t)
+ tbl %>%
+  select(Semana) %>%
+  group_by(Semana) %>%
+  summarise(qtde = n()) %>%
+  ggplot(aes(x=Semana,y=qtde, label=qtde)) + geom_bar(stat="identity", fill="blue") + geom_text(vjust = -0.5) + scale_x_continuous(breaks=seq(4,9)) + theme_bw()
+```
+
+No gráfico acima pode-se observar que 830 produtos tiveram evolução nas vendas na semana 4 em relação a semana 3, desses 830, 295 tiveram novamente evolução na semana 5 com relação a semana 4, ao final das seis semanas, apenas 14 produtos apresentaram evolução nas vendas em todas as semanas.
+
+#### Volumes de vendas por semana dos produtos que apresentaram evolução todas as semanas
+
+```{r plots6, echo=FALSE}
+ df %>%
+  filter(Producto_ID %in% tbl[tbl$Semana==8,]$Producto_ID) %>% 
+  select(Semana,Demanda_uni_equil) %>%
+  group_by(Semana) %>%
+  summarise(total = sum(Demanda_uni_equil)) %>%
+  ggplot(aes(x=Semana,y=total, label=format(total, big.mark = ".", decimal.mark = ",", scientific = FALSE))) + geom_line(stat="identity", color="blue") + geom_text(vjust="inward",hjust="inward") +
+  geom_point(size=2, shape=21, color = 'blue', fill='white') + scale_x_continuous(breaks=seq(3,9)) + theme_bw()
+```
+
+No gráfico acima pode-se observar a evolução ao longo das semanas nos 14 produtos que apresentaram evolução nas 6 semanas consecutivas, a quantidade total comercializada desses produtos na última semana foi 3.448.187 unidades, enquanto que o total na primeira semana foi de 2.447.945, ou seja, um incremento de 40.86% em 6 semanas.
+
+#### Evolução volume de vendas geral
+
+```{r plots7, echo=FALSE}
+ df %>%
+  select(Semana,Demanda_uni_equil) %>%
+  group_by(Semana) %>%
+  summarise(total = sum(Demanda_uni_equil)) %>%
+  ggplot(aes(x=Semana,y=total, label=format(total, big.mark = ".", decimal.mark = ",", scientific = FALSE))) + geom_line(stat="identity", color="blue") + geom_text(vjust="inward",hjust="inward") +
+  geom_point(size=2, shape=21, color = 'blue', fill='white') + scale_x_continuous(breaks=seq(3,9)) + theme_bw()
+```
+Analisando o volume de vendas geral, pode-se obsevar que não houve uma evolução constante, sendo que na última semana da base de dados, o volume de vendas foi 3,36% menor que na primeria semana.
+
+#### Representatividade dos produtos nas vendas
+
+```{r plots8, echo=FALSE}
+  df %>%
+    select(Producto_ID,Demanda_uni_equil) %>%
+    group_by(Producto_ID) %>%
+    summarise(total = sum(Demanda_uni_equil)) %>%
+    arrange(desc(total)) %>%
+    mutate(acum = cumsum(total)) %>%
+    ggplot(aes(x=seq(1,length(unique(df$Producto_ID))),y=acum)) + geom_line(color="blue", size=1) + geom_hline(yintercept = (sum(df$Demanda_uni_equil)*0.8), color="red") + geom_vline(xintercept = length(unique(df$Producto_ID))*0.2, color="red") + scale_y_continuous(labels = comma) +  theme(panel.background = element_rect(fill = "#FFFFFF", colour = "#6D9EC1"), panel.grid = element_line(size = 0.5, linetype = 'solid',colour = "#E0E0E0"), axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank()) 
+```
+
+A linha azul do gráfico acima representa as vendas acumuladas por produto de forma descrescente, a linha vermelha horizontal representa 80% do total de produtos vendidos, a linha vermelha vertical representa os 20% produtos que mais venderam, ou seja, os 20% produtos que mais venderam, correspondem a mais de 80% das vendas, esse percentual foi de 94,7%.
+
+#### Representatividade dos clientes nas vendas
+
+```{r plots9, echo=FALSE}
+  df %>%
+    select(Cliente_ID,Demanda_uni_equil) %>%
+    group_by(Cliente_ID) %>%
+    summarise(total = sum(Demanda_uni_equil)) %>%
+    arrange(desc(total)) %>%
+    mutate(acum = cumsum(total)) %>%
+    ggplot(aes(x=seq(1,length(unique(df$Cliente_ID))),y=acum)) + geom_line(color="blue", size=1) + geom_hline(yintercept = (sum(df$Demanda_uni_equil)*0.8), color="red") + geom_vline(xintercept = length(unique(df$Cliente_ID))*0.2, color="red") + scale_y_continuous(labels = comma) +  theme(panel.background = element_rect(fill = "#FFFFFF", colour = "#6D9EC1"), panel.grid = element_line(size = 0.5, linetype = 'solid',colour = "#E0E0E0"), axis.title.x=element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank()) 
+```
+
+A linha azul do gráfico acima representa as vendas acumuladas por cliente de forma descrescente, a linha vermelha horizontal representa 80% do total de produtos vendidos, a linha vermelha vertical representa os 20% clientes que mais venderam, diferente do gráfico anterior, a linha azul cruza a linha dos 80% das vendas após cruzar linha dos 20% clientes que mais venderam. Os 20% clientes com maior volume de vendas, não chegaram vender 80% do total, esse percentual foi de 71,5%.
+
+#### Vendas por estado
+
+```{r plots10, echo=FALSE}
+   ts <- fread("town_state.csv", header = T, encoding='UTF-8')
+   ag <- df %>%
+         select(Agencia_ID, Demanda_uni_equil) %>%
+         group_by(Agencia_ID) %>%
+         summarise(total=sum(Demanda_uni_equil)) %>%
+         left_join(ts,by="Agencia_ID")
+   ag[ag$State=="Queretaro de Arteaga","State"] = "QUERETARO"
+   ag <- ag %>% 
+         select(State,total) %>%
+         group_by(State) %>% 
+         summarise(total=sum(total))
+
+  spdf <- geojson_read("mexican_states.geojson",  what = "sp")
+  gg1 <-  ggplot() +
+     geom_polygon(data = spdf, aes( x = long, y = lat, group = group), fill="#69b3a2", color="white") +
+     theme_void() +
+     coord_map()
+  cnts <- getSpPPolygonsLabptSlots(spdf)
+  ag[(ag$State %in% c("BAJA CALIFORNIA NORTE","ESTADO DE MÉXICO","MÉXICO, D.F.","MICHOACÁN","NUEVO LEÓN","SAN LUIS POTOSÍ","YUCATÁN")),"State"] = c("Baja California","Mexico","Distrito Federal","Michoacan","Nuevo Leon","San Luis Potosi","Yucatan")
+  ag$State <- tolower(ag$State)
+  ag <- left_join(ag, data.frame(State=tolower(spdf$admin_name), long=cnts[,1],lat=cnts[,2]),by="State")
+  mn <- min(ag$total)
+  ag <- tidy(ag,region="State")
+  gg1 + geom_point(data=ag, aes(x = long, y = lat, size=(total/mn)*0.5), color = "yellow") + theme(legend.position="none")
+```
+
+Conforme pode-se observar no mapa acima, as vendas tem um volume maior na região centro-sul do país, no geral, os volumes de vendas nos estados do norte apresenta-se acima da maioria dos estados.
+
